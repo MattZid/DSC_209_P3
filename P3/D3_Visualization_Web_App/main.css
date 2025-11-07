@@ -1,0 +1,26 @@
+body {
+  font-family: sans-serif;
+}
+
+#Regions {
+  max-width: 320px;
+}
+
+#Regions_Selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.5rem;
+  background-color: #fff;
+}
+
+#Regions_Selector label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}

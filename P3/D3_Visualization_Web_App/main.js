@@ -23,16 +23,31 @@ function regionSelection(data) {
 
 const countries = regionSelection(emissionData);
 
-const countrySelect = d3.select('#Regions_Selector');
-countrySelect.selectAll('option')
-  .data(countries)
-  .join('option')
-  .attr('value', d => d)
+function renderRegionSelector(regions) {
+  const selector = d3.select('#Regions_Selector');
+
+  const labels = selector.selectAll('label.region-option')
+    .data(regions, d => d)
+    .join(enter => {
+      const label = enter.append('label')
+        .attr('class', 'region-option');
+
+      label.append('input')
+        .attr('type', 'checkbox')
+        .attr('name', 'region');
+
+      label.append('span');
+
+      return label;
+    });
+
+  labels.select('input')
+    .attr('value', d => d);
+
+  labels.select('span')
   .text(d => d);
+  }
+
+renderRegionSelector(countries);
 
 console.log(countries);
-
-
-test test test
-
-tesing things
