@@ -25,7 +25,6 @@ const countries = regionSelection(emissionData);
 
 function renderRegionSelector(regions) {
   const selector = d3.select('#Regions_Selector');
-
   const labels = selector.selectAll('label.region-option')
     .data(regions, d => d)
     .join(enter => {
