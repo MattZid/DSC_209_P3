@@ -48,7 +48,7 @@ function getUniqueValues(data, key) {
 }
 
 const countries = getUniqueValues(emissionData, "Country");
-const gasTypes = getUniqueValues(emissionData, "Gas Type");
+const gasTypes = getUniqueValues(emissionData, "Gas_Type");
 const industries = getUniqueValues(emissionData, "Industry");
 
 // --- Country checkboxes (multi-select) ---
