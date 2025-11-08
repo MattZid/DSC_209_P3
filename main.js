@@ -108,9 +108,6 @@ const svg = d3.select("#gas_plot")
   .attr("height", height);
 
 const chartGroup = svg.append("g").attr("class", "chart-content");
-const xAxisGroup = chartGroup.append("g").attr("class", "x-axis");
-const yAxisGroup = chartGroup.append("g").attr("class", "y-axis");
-const linesGroup = chartGroup.append("g").attr("class", "lines-layer");
 
 svg.append("text")
   .attr("x", width / 2)    
@@ -170,18 +167,8 @@ function updateVisualization() {
     ([country, dateMap]) => [country, Array.from(dateMap.values())]
   );
 
-  const lineTransition = d3.transition().duration(700).ease(d3.easeCubicInOut);
-
-  if (filteredUnique.length === 0) {
-    linesGroup.selectAll(".line-series")
-      .data([], ([country]) => country)
-      .join(
-        enter => enter,
-        update => update,
-        exit => exit.transition(lineTransition).style("opacity", 0).remove()
-      );
-    return;
-  }
+  chartGroup.selectAll("*").remove();
+  if (filteredUnique.length === 0) return;
 
   const allPoints = filteredUnique.flatMap(([, values]) => values);
 
@@ -195,31 +182,24 @@ function updateVisualization() {
     .range([height - margin.bottom, margin.top]);
 
   // Axes
-  xAxisGroup
+  chartGroup.append("g")
     .attr("transform", `translate(0,${height - margin.bottom})`)
-    .transition(lineTransition)
     .call(d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0));
 
-  yAxisGroup
+  chartGroup.append("g")
     .attr("transform", `translate(${margin.left},0)`)
-    .transition(lineTransition)
     .call(d3.axisLeft(y))
-    .selection()
     .call(g => g.select(".domain").remove())
     .call(g => g.selectAll(".tick line")
       .clone()
       .attr("x2", width - margin.left - margin.right)
-      .attr("stroke-opacity", 0.1));
-
-  yAxisGroup.selectAll(".axis-label")
-    .data([null])
-    .join("text")
-      .attr("class", "axis-label")
+      .attr("stroke-opacity", 0.1))
+    .call(g => g.append("text")
       .attr("x", -margin.left + 10)
       .attr("y", margin.top - 10)
       .attr("fill", "currentColor")
       .attr("text-anchor", "start")
-      .text("↑ Emissions (Million metric tons CO₂ eq.)");
+      .text("↑ Emissions (Million metric tons CO₂ eq.)"));
 
   // Line generator
 const line = d3.line()
@@ -227,34 +207,16 @@ const line = d3.line()
     .y(d => y(d.emissions));
 
   // Draw lines
-  const series = linesGroup.selectAll(".line-series")
-    .data(filteredUnique, ([country]) => country);
-
-  series.exit()
-    .transition(lineTransition)
-    .style("opacity", 0)
-    .remove();
-
-  const seriesEnter = series.enter()
-    .append("path")
-    .attr("class", "line-series")
-    .attr("fill", "none")
-    .attr("stroke-width", 2)
-    .attr("stroke", ([c]) => color(c))
-    .attr("d", ([, values]) => line(values.sort((a, b) => a.date - b.date)))
-    .style("opacity", 0);
-
-  const mergedSeries = seriesEnter.merge(series);
-
-  mergedSeries.transition(lineTransition)
-    .attr("stroke", ([c]) => color(c))
-    .attr("d", ([, values]) => line(values.sort((a, b) => a.date - b.date)))
-    .style("opacity", 1);
-
-  mergedSeries.selectAll("title")
-    .data(([country]) => [country])
-    .join("title")
-    .text(d => d);
+  chartGroup.append("g")
+    .selectAll("path")
+    .data(filteredUnique)
+    .join("path")
+      .attr("fill", "none")
+      .attr("stroke", ([c]) => color(c))
+      .attr("stroke-width", 2)
+      .attr("d", ([, values]) => line(values.sort((a, b) => a.date - b.date)))
+      .append("title")
+      .text(([c]) => c);
 }
 
 // ---------------------------
