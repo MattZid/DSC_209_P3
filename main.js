@@ -4,47 +4,43 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 // 1. Loading data
 // ---------------------------
 async function loadEmissionData() {
-  const localPath = './Data/quarterly_greenhouse_long.json';
-  const ghPagesPath = 'https://mattzidell.github.io/DSC_209_P3/P3/D3_Visualization_Web_App/Data/quarterly_greenhouse_long.json';
-  const host = window.location.hostname;
-  const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '';
-  // Use the hosted JSON when running on GitHub Pages, otherwise fall back to the local file
-  const dataUrl = (host.endsWith('github.io') && !isLocalhost) ? ghPagesPath : localPath;
+  const apiUrl = 'https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Indicator_1_1_quarterly/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson';
+  const localPath = './P3/D3_Visualization_Web_App/Data/quarterly_greenhouse_long.json';
 
   try {
-    const response = await fetch('https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Indicator_1_1_quarterly/FeatureServer/0/query?where=1%3D1&outFields=Country,Unit,Industry,Gas_Type,Seasonal_Adjustment,Scale,F2010Q1,F2010Q2,F2010Q3,F2010Q4,F2011Q1,F2011Q2,F2011Q3,F2011Q4,F2012Q1,F2012Q2,F2012Q3,F2012Q4,F2013Q1,F2013Q2,F2013Q3,F2013Q4,F2014Q1,F2014Q2,F2014Q3,F2014Q4,F2015Q1,F2015Q2,F2015Q3,F2015Q4,F2016Q1,F2016Q2,F2016Q3,F2016Q4,F2017Q1,F2017Q2,F2017Q3,F2017Q4,F2018Q1,F2018Q2,F2018Q3,F2018Q4,F2019Q1,F2019Q2,F2019Q3,F2019Q4,F2020Q1,F2020Q2,F2020Q3,F2020Q4,F2021Q1,F2021Q2,F2021Q3,F2021Q4,F2022Q1,F2022Q2,F2022Q3,F2022Q4,F2023Q1,F2023Q2,F2023Q3,F2023Q4,F2024Q1,F2024Q2,F2024Q3,F2024Q4&outSR=4326&f=json');
-    const json = await response.json();
-    if (!json.features) return [];
-
-    const raw = json.features.map(f => f.attributes);
-
-    const tidy = raw.flatMap(r => {
-      return Object.entries(r)
-        .filter(([k]) => /^F\d{4}Q\d$/.test(k))
-        .map(([key, value]) => {
-          const year = key.slice(1, 5);
-          const quarter = key.slice(5);
-          return {
-            Country: r.Country,
-            "Gas Type": r.Gas_Type,
-            Industry: r.Industry,
-            "Seasonal Adjustment": r.Seasonal_Adjustment,
-            date: `${year}-${quarter}`,
-            emissions: value
-          };
-        });
-    });
-
-    console.log("Loaded tidy data:", tidy.slice(0, 10));
-    return tidy;
-  } catch (error) {
-    console.error('Error loading data:', error);
-    return [];
+    const response = await fetch(apiUrl, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${apiUrl}: ${response.status}`);
+    }
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (data && Array.isArray(data.features)) {
+      // Flatten GeoJSON feature collection so rest of the code can keep using plain objects.
+      return data.features.map(feature => ({
+        ...(feature.properties || {}),
+        geometry: feature.geometry ?? null
+      }));
+    }
+    throw new Error('Unexpected payload from GeoJSON endpoint');
+  } catch (remoteError) {
+    console.warn('Falling back to local dataset copy:', remoteError);
+    try {
+      const response = await fetch(localPath);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${localPath}: ${response.status}`);
+      }
+      return await response.json();
+    } catch (localError) {
+      console.error('Unable to load emissions dataset from either source:', localError);
+      return [];
+    }
   }
 }
 
 const emissionData = await loadEmissionData();
-console.log(emissionData.slice(0, 5));
+console.log('emissionData:', emissionData);
 // ---------------------------
 // 2. Selectors
 // ---------------------------
@@ -53,7 +49,7 @@ function getUniqueValues(data, key) {
 }
 
 const countries = getUniqueValues(emissionData, "Country");
-const gasTypes = getUniqueValues(emissionData, "Gas Type");
+const gasTypes = getUniqueValues(emissionData, "Gas_Type");
 const industries = getUniqueValues(emissionData, "Industry");
 
 // --- Country checkboxes (multi-select) ---
@@ -127,7 +123,7 @@ svg.append("text")
   .text("By Region, Gas Type, and Industry (Seasonally Adjusted)");
 
 const color = d3.scaleOrdinal(d3.schemeTableau10).domain(countries);
-const parseDate = d3.timeParse("%Y-Q%q");
+const parseDate = d3.utcParse("%Y-%m-%dT%H:%M:%S.%L");
 
 // ---------------------------
 // 4. Visualization function
@@ -143,9 +139,9 @@ function updateVisualization() {
   const filtered = emissionData
     .filter(d =>
       selectedCountries.includes(d.Country) &&
-      d["Gas Type"] === selectedGas &&
+      d["Gas_Type"] === selectedGas &&
       d.Industry === selectedIndustry &&
-      d["Seasonal Adjustment"] === "Seasonally Adjusted"
+      d["Seasonal_Adjustment"] === "Seasonally Adjusted"
     )
     .map(d => ({
       country: d.Country,
@@ -259,3 +255,9 @@ function updateLegend(selectedCountries) {
   legendItems.select("span:first-child")
     .style("background-color", d => color(d));
 }
+
+
+
+// Major things I think still needs to be done: 
+//  Decide whether to keep the gas type/industry selectors or force them into one fixed choicen
+//  Better styling in general
