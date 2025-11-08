@@ -139,9 +139,9 @@ function updateVisualization() {
   const filtered = emissionData
     .filter(d =>
       selectedCountries.includes(d.Country) &&
-      d["Gas Type"] === selectedGas &&
+      d["Gas_Type"] === selectedGas &&
       d.Industry === selectedIndustry &&
-      d["Seasonal Adjustment"] === "Seasonally Adjusted"
+      d["Seasonal_Adjustment"] === "Seasonally Adjusted"
     )
     .map(d => ({
       country: d.Country,
