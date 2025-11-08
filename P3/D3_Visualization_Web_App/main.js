@@ -3,8 +3,15 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 console.log(d3);
 
 async function loadEmissionData() {
+  const localPath = './Data/quarterly_greenhouse_long.json';
+  const ghPagesPath = 'https://mattzidell.github.io/DSC_209_P3/P3/D3_Visualization_Web_App/Data/quarterly_greenhouse_long.json';
+  const host = window.location.hostname;
+  const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '';
+  // Pull from GitHub Pages when hosted there; default to the local file otherwise
+  const dataUrl = (host.endsWith('github.io') && !isLocalhost) ? ghPagesPath : localPath;
+
   try {
-    const response = await fetch('./Data/quarterly_greenhouse_long.json');
+    const response = await fetch(dataUrl);
     const emissionData = await response.json();
     return emissionData;
   } catch (error) {
