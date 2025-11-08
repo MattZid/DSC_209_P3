@@ -12,9 +12,31 @@ async function loadEmissionData() {
   const dataUrl = (host.endsWith('github.io') && !isLocalhost) ? ghPagesPath : localPath;
 
   try {
-    const response = await fetch(dataUrl);
-    const emissionData = await response.json();
-    return emissionData;
+    const response = await fetch('https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Indicator_1_1_quarterly/FeatureServer/0/query?where=1%3D1&outFields=Country,Unit,Industry,Gas_Type,Seasonal_Adjustment,Scale,F2010Q1,F2010Q2,F2010Q3,F2010Q4,F2011Q1,F2011Q2,F2011Q3,F2011Q4,F2012Q1,F2012Q2,F2012Q3,F2012Q4,F2013Q1,F2013Q2,F2013Q3,F2013Q4,F2014Q1,F2014Q2,F2014Q3,F2014Q4,F2015Q1,F2015Q2,F2015Q3,F2015Q4,F2016Q1,F2016Q2,F2016Q3,F2016Q4,F2017Q1,F2017Q2,F2017Q3,F2017Q4,F2018Q1,F2018Q2,F2018Q3,F2018Q4,F2019Q1,F2019Q2,F2019Q3,F2019Q4,F2020Q1,F2020Q2,F2020Q3,F2020Q4,F2021Q1,F2021Q2,F2021Q3,F2021Q4,F2022Q1,F2022Q2,F2022Q3,F2022Q4,F2023Q1,F2023Q2,F2023Q3,F2023Q4,F2024Q1,F2024Q2,F2024Q3,F2024Q4&outSR=4326&f=json');
+    const json = await response.json();
+    if (!json.features) return [];
+
+    const raw = json.features.map(f => f.attributes);
+
+    const tidy = raw.flatMap(r => {
+      return Object.entries(r)
+        .filter(([k]) => /^F\d{4}Q\d$/.test(k))
+        .map(([key, value]) => {
+          const year = key.slice(1, 5);
+          const quarter = key.slice(5);
+          return {
+            Country: r.Country,
+            "Gas Type": r.Gas_Type,
+            Industry: r.Industry,
+            "Seasonal Adjustment": r.Seasonal_Adjustment,
+            date: `${year}-${quarter}`,
+            emissions: value
+          };
+        });
+    });
+
+    console.log("Loaded tidy data:", tidy.slice(0, 10));
+    return tidy;
   } catch (error) {
     console.error('Error loading data:', error);
     return [];
@@ -22,6 +44,7 @@ async function loadEmissionData() {
 }
 
 const emissionData = await loadEmissionData();
+console.log(emissionData.slice(0, 5));
 // ---------------------------
 // 2. Selectors
 // ---------------------------
@@ -104,7 +127,7 @@ svg.append("text")
   .text("By Region, Gas Type, and Industry (Seasonally Adjusted)");
 
 const color = d3.scaleOrdinal(d3.schemeTableau10).domain(countries);
-const parseDate = d3.utcParse("%Y-%m-%dT%H:%M:%S.%L");
+const parseDate = d3.timeParse("%Y-Q%q");
 
 // ---------------------------
 // 4. Visualization function
@@ -236,9 +259,3 @@ function updateLegend(selectedCountries) {
   legendItems.select("span:first-child")
     .style("background-color", d => color(d));
 }
-
-
-
-// Major things I think still needs to be done: 
-//  Decide whether to keep the gas type/industry selectors or force them into one fixed choicen
-//  Better styling in general
