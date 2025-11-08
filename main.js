@@ -4,17 +4,38 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 // 1. Loading data
 // ---------------------------
 async function loadEmissionData() {
+  const apiUrl = 'https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services/Indicator_1_1_quarterly/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson';
   const localPath = './P3/D3_Visualization_Web_App/Data/quarterly_greenhouse_long.json';
 
   try {
-    const response = await fetch(localPath);
+    const response = await fetch(apiUrl, { cache: 'no-store' });
     if (!response.ok) {
-      throw new Error(`Failed to fetch ${localPath}: ${response.status}`);
+      throw new Error(`Failed to fetch ${apiUrl}: ${response.status}`);
     }
-    return await response.json();
-  } catch (error) {
-    console.error('Unable to load emissions dataset from local Data folder:', error);
-    return [];
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (data && Array.isArray(data.features)) {
+      // Flatten GeoJSON feature collection so rest of the code can keep using plain objects.
+      return data.features.map(feature => ({
+        ...(feature.properties || {}),
+        geometry: feature.geometry ?? null
+      }));
+    }
+    throw new Error('Unexpected payload from GeoJSON endpoint');
+  } catch (remoteError) {
+    console.warn('Falling back to local dataset copy:', remoteError);
+    try {
+      const response = await fetch(localPath);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${localPath}: ${response.status}`);
+      }
+      return await response.json();
+    } catch (localError) {
+      console.error('Unable to load emissions dataset from either source:', localError);
+      return [];
+    }
   }
 }
 
