@@ -4,21 +4,29 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 // 1. Loading data
 // ---------------------------
 async function loadEmissionData() {
-  const localPath = './Data/quarterly_greenhouse_long.json';
-  const ghPagesPath = 'https://mattzidell.github.io/DSC_209_P3/P3/D3_Visualization_Web_App/Data/quarterly_greenhouse_long.json';
+  const localPath = './P3/D3_Visualization_Web_App/Data/quarterly_greenhouse_long.json';
+  const ghPagesPath = 'https://raw.githubusercontent.com/mattzidell/DSC_209_P3/main/P3/D3_Visualization_Web_App/Data/quarterly_greenhouse_long.json';
   const host = window.location.hostname;
   const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '';
-  // Use the hosted JSON when running on GitHub Pages, otherwise fall back to the local file
-  const dataUrl = (host.endsWith('github.io') && !isLocalhost) ? ghPagesPath : localPath;
+  const prefersRemote = host.endsWith('github.io') && !isLocalhost;
+  // Try the GitHub-hosted JSON first when running on Pages, then fall back to the local copy
+  const sources = prefersRemote ? [ghPagesPath, localPath] : [localPath];
 
-  try {
-    const response = await fetch(dataUrl);
-    const emissionData = await response.json();
-    return emissionData;
-  } catch (error) {
-    console.error('Error loading data:', error);
-    return [];
+  for (const url of sources) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.warn(`Failed to fetch ${url}: ${response.status}`);
+        continue;
+      }
+      return await response.json();
+    } catch (error) {
+      console.warn(`Error loading data from ${url}:`, error);
+    }
   }
+
+  console.error('Unable to load emissions dataset from any source.');
+  return [];
 }
 
 const emissionData = await loadEmissionData();
