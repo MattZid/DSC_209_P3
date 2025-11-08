@@ -11,12 +11,10 @@ async function loadEmissionData() {
 
     const raw = json.features.map(f => f.attributes);
 
-    // 1️⃣ Reshape: convert each "wide" record into multiple quarter-level records
     const tidy = raw.flatMap(r => {
       return Object.entries(r)
-        .filter(([k]) => /^F\d{4}Q\d$/.test(k)) // only quarterly fields
+        .filter(([k]) => /^F\d{4}Q\d$/.test(k))
         .map(([key, value]) => {
-          // Convert "F2023Q1" → "2023-Q1"
           const year = key.slice(1, 5);
           const quarter = key.slice(5);
           return {
